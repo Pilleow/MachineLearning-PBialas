@@ -223,7 +223,7 @@ nn.Sequential(
 '''
 # So more alyers 
 
-# I dont get the use of one neuron neural network ¯\_(ツ)_/¯
+# I dont get the use of one neuron neural network ¯\_(ツ)_/¯.
 ```
 
 ```{python}
