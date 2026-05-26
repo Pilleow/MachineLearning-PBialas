@@ -5,9 +5,9 @@ jupyter:
       extension: .Rmd
       format_name: rmarkdown
       format_version: '1.2'
-      jupytext_version: 1.19.1
+      jupytext_version: 1.19.2
   kernelspec:
-    display_name: Python 3 (ipykernel)
+    display_name: venv (3.12.3)
     language: python
     name: python3
 ---
@@ -16,7 +16,14 @@ jupyter:
 # Counterfeit detection
 <!-- #endregion -->
 
-The task in this assignment is to detect the  counterfeit banknotes. The data set is based on [banknote authentication Data Set ](https://archive.ics.uci.edu/ml/datasets/banknote+authentication#) from UCI Machine Learning repository. The first three columns denote different parameters obtained from the photographs of the banknotes and last colum provides the label. Frankly as the dataset does not have any description I don't know  which labels corresponds to real and which to counterfeited banknotes. let's assume that label one (positive) denotes the clounterfeits. The set  [banknote_authentication.csv](./data/banknote_authentication.csv) can be found in the `data`  directory.
+The task in this assignment is to detect the  counterfeit banknotes. The data set is based on [banknote authentication Data Set ](https://archive.ics.uci.edu/ml/datasets/banknote+authentication#) from UCI Machine Learning repository. The first three columns denote different parameters obtained from the photographs of the banknotes and last colum provides the label. Frankly as the dataset does not have any description I don't know  which labels corresponds to real and which to counterfeited banknotes. let's assume that label one (positive) denotes the counterfeits. The set  [banknote_authentication.csv](./data/banknote_authentication.csv) can be found in the `data`  directory.
+
+Wykrycie fałszywych banknotów <br>
+pierwsze 3 kolumny mówią o parametrach pobranych z banknotu, a ostatnia kolumna to etykieta prawdziwości
+<br>
+1 - podrobiony
+<br>
+0 - prawdziwy
 
 ```{python}
 import pandas as pd
@@ -39,6 +46,7 @@ Please insert you  firstname  and name below
 ```{python}
 from  sklearn.model_selection import train_test_split
 seed = 31287
+# Jakub Budzyński
 ```
 
 ```{python}
@@ -59,6 +67,9 @@ data.info()
 
 ```{python}
 data_train, data_test = train_test_split(data, test_size=0.2, shuffle=True, stratify=data.loc[:,'counterfeit'], random_state=seed)
+print(data_train[:5])
+
+print(data_train["a0"][:5])
 ```
 
 ```{python editable=TRUE, slideshow={'slide_type': ''}}
@@ -68,6 +79,10 @@ data_train
 ```{python}
 lbls_train = data_train['counterfeit']
 lbls_test = data_test['counterfeit']
+
+print(lbls_train)
+print("--------------")
+print(lbls_test)
 ```
 
 ```{python}
@@ -79,30 +94,83 @@ for i in range(4):
     ax[i].hist(data_train[lbls_train==1].iloc[:,i], bins=32, histtype='bar', color='orange', alpha =0.25)
 ```
 
+![image.png](attachment:image.png)
+
 <!-- #region editable=true slideshow={"slide_type": ""} -->
 ## Problem 1
 <!-- #endregion -->
 
-Using  the [GaussianNB](https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.GaussianNB.html) function construct the  Gaussian  Bayes classifier using only one feature. Which feature will you choose? Calculate the confusion matrix (normalized as to show rates), ROC AUC score and plot ROC curve. Do this both for training and validation set. Plot both curves on the same plot.  
+Using  the [GaussianNB](https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.GaussianNB.html) function construct the  Gaussian  Bayes classifier111 using only one feature. Which feature will you choose? Calculate the confusion matrix (normalized as to show rates), ROC AUC score and plot ROC curve. Do this both for training and validation set. Plot both curves on the same plot.  
 
 ```{python}
 from sklearn.naive_bayes import GaussianNB
-```
+import numpy as np
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import roc_curve, auc #area under ROC curve
 
-<!-- #region editable=true slideshow={"slide_type": ""} -->
-__Hint__ For calculating metrics and plotting ROC curves you may use functions from scikit-learn: `roc_curve`, `roc_auc_score` and `confusion matrix`. For estimating normal distribution parameters  use `norm.fit` `from scipy.stats`. Use `norm.pdf` for normal probability density function.
-<!-- #endregion -->
+# CONSTRUCT THE  GAUSSIAN  BAYES classifier1 USING ONLY ONE FEATURE.
+classifier1 = GaussianNB()
+classifier1.fit(data_train[["a0"]], data_train["counterfeit"])
+predicted = classifier1.predict(data_test[["a0"]])
+train_pred = classifier1.predict(data_train[["a0"]])
 
-```{python editable=TRUE, slideshow={'slide_type': ''}}
-from sklearn.metrics import roc_auc_score, roc_curve, confusion_matrix
-```
+# CONFUSION MATRIX
+# True Positive (TP): The model correctly predicted a positive outcome i.e the actual outcome was positive.
+# True Negative (TN): The model correctly predicted a negative outcome i.e the actual outcome was negative.
+# False Positive (FP): The model incorrectly predicted a positive outcome i.e the actual outcome was negative.
+# False Negative (FN): The model incorrectly predicted a negative outcome i.e the actual outcome was positive.
 
-<!-- #region editable=true slideshow={"slide_type": ""} -->
-Which feature did you choose?
-<!-- #endregion -->
 
-```{python editable=TRUE, slideshow={'slide_type': ''}}
-data_train
+# CONFUSION MATRIX
+cm = confusion_matrix(data_test[["counterfeit"]],predicted, normalize='true')
+print("Never seen")
+print(cm)
+print()
+
+cm = confusion_matrix(data_train[["counterfeit"]],train_pred, normalize='true')
+print("Seen")
+print(cm)
+print()
+
+
+# ROC AUC
+
+train_prob = classifier1.predict_proba(data_train[["a0"]])[:, 1] # predict probability
+test_prob = classifier1.predict_proba(data_test[["a0"]])[:, 1]
+
+fpr_train, tpr_train, thresholds_train = roc_curve(data_train[["counterfeit"]], train_prob) 
+auc_train = auc(fpr_train, tpr_train)
+fpr_test, tpr_test, thresholds_test = roc_curve(data_test[["counterfeit"]], test_prob) 
+auc_test = auc(fpr_test, tpr_test)
+plt.figure()  
+
+plt.plot(
+    fpr_train,
+    tpr_train,
+    label=f"Training ROC (AUC = {auc_train:.2f})"
+)
+
+plt.plot(
+    fpr_test,
+    tpr_test,
+    label=f"Validation ROC (AUC = {auc_test:.2f})"
+)
+
+
+plt.plot([0, 1], [0, 1], 'k--', label='No Skill') #Random quesing
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curve for counterfeit banknotes Classification')
+plt.legend()
+plt.show()
+
+
+
+
+
+
 ```
 
 <!-- #region editable=true slideshow={"slide_type": ""} -->
@@ -113,6 +181,75 @@ data_train
 Same as Problem 1 but now construct Gaussian Naive Bayes using two features. Additionally  compare ROC curve obtained with this and previous  classifier on the test set. What is the improvement of AUC score on the test set?
 <!-- #endregion -->
 
+```{python}
+from sklearn.naive_bayes import GaussianNB
+import numpy as np
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import roc_curve, auc #area under ROC curve
+
+# CONSTRUCT THE  GAUSSIAN  BAYES CLASSIFIER USING ONLY TWO FEATURES.
+classifier2 = GaussianNB()
+classifier2.fit(data_train[["a0", "a1"]], data_train["counterfeit"])
+predicted = classifier2.predict(data_test[["a0", "a1"]])
+train_pred = classifier2.predict(data_train[["a0", "a1"]])
+
+
+
+# CONFUSION MATRIX
+cm = confusion_matrix(data_test[["counterfeit"]],predicted, normalize='true')
+print("Never seen")
+print(cm)
+print()
+
+cm = confusion_matrix(data_train[["counterfeit"]],train_pred, normalize='true')
+print("Seen")
+print(cm)
+print()
+
+
+# ROC AUC
+
+train_prob = classifier2.predict_proba(data_train[["a0", "a1"]])[:, 1] # predict probability
+test_prob = classifier2.predict_proba(data_test[["a0", "a1"]])[:, 1]
+
+fpr_train, tpr_train, thresholds_train = roc_curve(data_train[["counterfeit"]], train_prob) 
+auc_train = auc(fpr_train, tpr_train)
+fpr_test, tpr_test, thresholds_test = roc_curve(data_test[["counterfeit"]], test_prob) 
+auc_test = auc(fpr_test, tpr_test)
+plt.figure()  
+
+plt.plot(
+    fpr_train,
+    tpr_train,
+    label=f"Training ROC (AUC = {auc_train:.2f})"
+)
+
+plt.plot(
+    fpr_test,
+    tpr_test,
+    label=f"Validation ROC (AUC = {auc_test:.2f})"
+)
+
+
+plt.plot([0, 1], [0, 1], 'k--', label='No Skill') #Random quesing
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curve for counterfeit banknotes Classification')
+plt.legend()
+plt.show()
+
+
+print("Conclusion: second feature improves model quality. Model has more specific data to train")
+
+
+
+
+
+
+```
+
 <!-- #region editable=true slideshow={"slide_type": ""} -->
 ## Problem 3
 <!-- #endregion -->
@@ -122,10 +259,116 @@ Same as Problem 2 but now implement Gaussian Naive Bayes using all features. Sho
 ```
 
 ```{python editable=TRUE, slideshow={'slide_type': ''}}
-fig, ax = plt.subplots(figsize=(8,8))
-ax.set_aspect(1.0)
-plt.plot(fprs_test_a0, tprs_test_a0,label='a0');
-plt.plot(fprs_test_a0a1, tprs_test_a0a1,label='a0 a1');
-plt.plot(fprs_test_all, tprs_test_all,label='all');
-plt.legend();
+from sklearn.naive_bayes import GaussianNB
+import numpy as np
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import roc_curve, auc #area under ROC curve
+import math
+
+# CONSTRUCT THE  GAUSSIAN  BAYES CLASSIFIER USING ALL FEATURES.
+classifier3 = GaussianNB()
+classifier3.fit(data_train[["a0", "a1", "a2", "a3"]], data_train["counterfeit"])
+predicted = classifier3.predict(data_test[["a0", "a1", "a2", "a3"]])
+train_pred = classifier3.predict(data_train[["a0", "a1", "a2", "a3"]])
+
+
+
+# CONFUSION MATRIX FOR TEST SET
+cm = confusion_matrix(data_test[["counterfeit"]],predicted, normalize='true')
+print("Never seen")
+print(cm)
+print()
+
+
+
+# ROC AUC
+
+train_prob = classifier3.predict_proba(data_train[["a0", "a1", "a2", "a3"]])[:, 1] # predict probability
+test_prob = classifier3.predict_proba(data_test[["a0", "a1", "a2", "a3"]])[:, 1]
+
+fpr_train, tpr_train, thresholds_train = roc_curve(data_train[["counterfeit"]], train_prob) 
+auc_train = auc(fpr_train, tpr_train)
+fpr_test, tpr_test, thresholds_test = roc_curve(data_test[["counterfeit"]], test_prob) 
+auc_test = auc(fpr_test, tpr_test)
+plt.figure()  
+
+plt.plot(
+    fpr_train,
+    tpr_train,
+    label=f"Training ROC (AUC = {auc_train:.2f})"
+)
+
+plt.plot(
+    fpr_test,
+    tpr_test,
+    label=f"Validation ROC (AUC = {auc_test:.2f})"
+)
+
+
+plt.plot([0, 1], [0, 1], 'k--', label='No Skill') #Random quesing
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curve for counterfeit banknotes Classification')
+plt.legend()
+plt.show()
+
+
+
+
+
+```
+
+```{python}
+# COMPARE ALL 3
+
+# All Features
+train_prob_all = classifier3.predict_proba(data_train[["a0", "a1", "a2", "a3"]])[:, 1]
+test_prob_all = classifier3.predict_proba(data_test[["a0", "a1", "a2", "a3"]])[:, 1]
+
+fpr_train_all, tpr_train_all, thresholds_train_all = roc_curve(data_train[["counterfeit"]], train_prob_all) 
+auc_train_all = auc(fpr_train_all, tpr_train_all)
+fpr_test_all, tpr_test_all, thresholds_test_all = roc_curve(data_test[["counterfeit"]], test_prob_all) 
+auc_test_all = auc(fpr_test_all, tpr_test_all)
+
+# 1 Feature
+train_prob_1 = classifier1.predict_proba(data_train[["a0"]])[:, 1]
+test_prob_1 = classifier1.predict_proba(data_test[["a0"]])[:, 1]
+
+fpr_train_1, tpr_train_1, thresholds_train_1 = roc_curve(data_train[["counterfeit"]], train_prob_1) 
+auc_train_1 = auc(fpr_train_1, tpr_train_1)
+fpr_test_1, tpr_test_1, thresholds_test_1 = roc_curve(data_test[["counterfeit"]], test_prob_1) 
+auc_test_1 = auc(fpr_test_all, tpr_test_all)
+
+# 2 Feature
+train_prob_2 = classifier2.predict_proba(data_train[["a0", "a1"]])[:, 1]
+test_prob_2 = classifier2.predict_proba(data_test[["a0", "a1"]])[:, 1]
+
+fpr_train_2, tpr_train_2, thresholds_train_2 = roc_curve(data_train[["counterfeit"]], train_prob_2) 
+auc_train_2 = auc(fpr_train_2, tpr_train_2)
+fpr_test_2, tpr_test_2, thresholds_test_2 = roc_curve(data_test[["counterfeit"]], test_prob_2) 
+auc_test_2 = auc(fpr_test_2, tpr_test_2)
+
+
+fig, axs = plt.subplots(1, 3, figsize=(15,5))
+
+axs[0].plot(fpr_train_1, tpr_train_1)
+axs[0].plot(fpr_test_1, tpr_test_1)
+axs[0].set_title("1 Feature")
+
+axs[1].plot(fpr_train_2, tpr_train_2)
+axs[1].plot(fpr_test_2, tpr_test_2)
+axs[1].set_title("2 Features")
+
+axs[2].plot(fpr_train_all, tpr_train_all)
+axs[2].plot(fpr_test_all, tpr_test_all)
+axs[2].set_title("All Features")
+
+plt.tight_layout()
+plt.show()
+
+print("The second seems the best  (੭˶´◕ω⁠◕`˶)੭")
+
+
 ```

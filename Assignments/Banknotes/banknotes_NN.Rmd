@@ -5,9 +5,9 @@ jupyter:
       extension: .Rmd
       format_name: rmarkdown
       format_version: '1.2'
-      jupytext_version: 1.19.1
+      jupytext_version: 1.19.2
   kernelspec:
-    display_name: Python 3 (ipykernel)
+    display_name: venv (3.12.3)
     language: python
     name: python3
 ---
@@ -89,26 +89,74 @@ Train a neural network classifier to predict counterfeit banknotes. Use the feat
 
 ```{python editable=TRUE, slideshow={'slide_type': ''}}
 import torch
-import torch.nn as tnn
+import torch.nn as nn
+# device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+# print(f"Using {device} device") #if NViDIA GPU is available
+
+# class NeuralNetwork(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.flatten = nn.Flatten()
+#         self.linear_relu_stack = nn.Sequential(
+#             nn.Linear(28*28, 512),
+#             nn.ReLU(),
+#             nn.Linear(512, 512),
+#             nn.ReLU(),
+#             nn.Linear(512, 10),
+#         )
+
+#     def forward(self, x):
+#         x = self.flatten(x)
+#         logits = self.linear_relu_stack(x)
+#         return logits
+
+# model = NeuralNetwork().to(device)
+# print(model)
+
 ```
 
 ```{python editable=TRUE, slideshow={'slide_type': ''}}
-features= [0, 3]
-nf=len(features)
+features= [0, 3] #choose features
+nf=len(features) # 2
+
+# X = torch.rand(1, 28, 28, device=device)
+# logits = model(X)
+# pred_probab = nn.Softmax(dim=1)(logits) #softmax - we want probability 
+# y_pred = pred_probab.argmax(1)
+# print(f"Predicted class: {y_pred}")
 ```
 
 ```{python editable=TRUE, slideshow={'slide_type': ''}}
+# training
+
 features_train = torch.from_numpy(data_train.values[:,features]).to(dtype=torch.float32)
-labels_train = torch.from_numpy(data_train.values[:,4:5]).to(dtype=torch.float32)
+labels_train = torch.from_numpy(data_train.values[:,4:5]).to(dtype=torch.float32) #selecting only column 4, but keepong it in 2D structure.
+print(labels_train[:10]) #so its only matching values like "0" and "1"
+print(features_train[:10]) #just passing a0 and a3 feature
 ```
 
 ```{python editable=TRUE, slideshow={'slide_type': ''}}
+# test 
+
 features_test = torch.from_numpy(data_test.values[:,features]).to(dtype=torch.float32)
 labels_test = torch.from_numpy(data_test.values[:,4:5]).to(dtype=torch.float32)
+print(labels_test[:10]) #so its only matching values like "0" and "1"
+print(features_test[:10])
 ```
 
 ```{python editable=TRUE, slideshow={'slide_type': ''}}
-model = tnn.Sequential(tnn.Linear(in_features=nf, out_features=1), tnn.Sigmoid())
+# in_features (int) – size of each input sample
+# out_features (int) – size of each output sample
+model = nn.Sequential(nn.Linear(in_features=nf, out_features=1), nn.Sigmoid())
+'''x1 ----\
+           >---- [ Linear ] ---- Sigmoid ---- output
+   x2 ----/
+'''
+
+# y=w_1*​x_1 ​+ w_2*​x_2 ​+ b
+# nn.Linear - Applies an affine linear transformation to the incoming data: y=x*A^T + b
+# so I basically create perceptron (ツ)
+
 ```
 
 ```{python editable=TRUE, slideshow={'slide_type': ''}}
@@ -117,9 +165,18 @@ from sklearn.metrics import roc_curve, confusion_matrix, accuracy_score
 
 ```{python editable=TRUE, slideshow={'slide_type': ''}}
 y_true = labels_test.numpy()
-with torch.no_grad():
+print(y_true[:5])
+print()
+
+with torch.no_grad(): #random weights use
   y_proba = model(features_test);
-  y_predicted = 1*(y_proba>0.5)
+  y_predicted = 1*(y_proba>0.5) # converts booleans into integers.
+
+# 0.91 > 0.5 → True
+# 0.12 > 0.5 → False
+
+# True behaves like 1
+# False behaves like 0
 ```
 
 ```{python editable=TRUE, slideshow={'slide_type': ''}}
@@ -131,11 +188,19 @@ optimizer = torch.optim.SGD(model.parameters(),lr=0.001)
 ```
 
 ```{python editable=TRUE, slideshow={'slide_type': ''}}
+loss_fn = nn.BCELoss() #Creates a criterion that measures the Binary Cross Entropy between the target and the input probabilities - Pytorch doc
+
 for era in range(50):
     for epoch in range(500):
         optimizer.zero_grad()
         pred = model(features_train)
-        loss = loss_fn(pred, labels_train)
+        # print(f"pred: {pred.shape}")
+        # print(f"pred: {pred[0][0]}")
+        # print(f"pred: {pred[0]}")
+        # print(f"pred: {pred[:10]}")
+        # print()
+        # print(f"labels: {labels_train}")
+        loss = loss_fn(pred, labels_train) #how well or how bad network performs
         loss.backward()
         optimizer.step()
     with torch.no_grad():
@@ -143,7 +208,22 @@ for era in range(50):
         acc_train =  torch.mean(0.0+ ((pred > 0.5)== (labels_train>0.5)))
         pred =  model(features_test)
         acc_test =  torch.mean(0.0+ ((pred > 0.5)== (labels_test>0.5)))
-    print(acc_train, acc_test)
+    print(f"acc_train, acc_test: {acc_train, acc_test}")
+
+# Maybe I've done something wrong and it should be something like this:
+'''
+nn.Sequential(
+    nn.Linear(2,8),
+    nn.ReLU(),
+    nn.Linear(8,8),
+    nn.ReLU(),
+    nn.Linear(8,1),
+    nn.Sigmoid()
+)
+'''
+# So more alyers 
+
+# I dont get the use of one neuron neural network ¯\_(ツ)_/¯
 ```
 
 ```{python}
