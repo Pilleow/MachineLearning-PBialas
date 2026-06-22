@@ -6,7 +6,10 @@
 
 1.06.2026 12:55:51 OK
 
-# Banknotes NN 
+# Banknotes NN 3/5
+
+22.06.2026 10:31:09 OK
+But no confusion matrix or AUC score reported. Very short training.
 
 7.06.2026 13:18:23
 I am not sure what you did here. Can we talk on monday 8.06?
